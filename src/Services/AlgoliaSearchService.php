@@ -292,19 +292,23 @@ final class AlgoliaSearchService implements SearchService
             if (is_array($propertyPath)) {
                 foreach ($propertyPath as $property) {
                     if ($this->propertyAccessor->isReadable($entity, $property)) {
-                        return (bool) $this->propertyAccessor->getValue($entity, $property);
+                        return $this->checkIfHasIndexableMethod($entity, $property);
                     }
-                    return false;
                 }
             } else {
-                if ($this->propertyAccessor->isReadable($entity, $propertyPath)) {
-                    return (bool) $this->propertyAccessor->getValue($entity, $propertyPath);
-                }
-                return false;
+                return $this->checkIfHasIndexableMethod($entity, $propertyPath);
             }
         }
 
         return true;
+    }
+
+    private function checkIfHasIndexableMethod(object $entity, string $propertyPath): bool
+    {
+        if ($this->propertyAccessor->isReadable($entity, $propertyPath)) {
+            return (bool) $this->propertyAccessor->getValue($entity, $propertyPath);
+        }
+        return false;
     }
 
     /**
