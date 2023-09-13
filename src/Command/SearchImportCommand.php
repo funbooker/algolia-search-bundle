@@ -77,12 +77,12 @@ EOT
         $config                = $this->searchService->getConfiguration();
         $indexingService       = ($shouldDoAtomicReindex ? $this->searchServiceForAtomicReindex : $this->searchService);
 
-        foreach ($entitiesToIndex as $entityClassName) {
+        foreach ($entitiesToIndex as $entityIndexName => $entityClassName) {
             if (!$this->searchService->isSearchable($entityClassName)) {
                 continue;
             }
 
-            $sourceIndexName = $this->searchService->searchableAs($entityClassName);
+            $sourceIndexName = $this->searchService->searchableAs($entityClassName, $entityIndexName);
 
             if ($shouldDoAtomicReindex) {
                 $temporaryIndexName = $this->searchServiceForAtomicReindex->searchableAs($entityClassName);
@@ -109,13 +109,15 @@ EOT
                     $responses      = $this->formatIndexingResponse($response);
 
                     foreach ($responses as $indexName => $numberOfRecords) {
-                        $output->writeln(sprintf(
-                            'Indexed <comment>%s / %s</comment> %s entities into %s index',
-                            $numberOfRecords,
-                            count($entities),
-                            $entityClass,
-                            '<info>' . $indexName . '</info>'
-                        ));
+                        $output->writeln(
+                            sprintf(
+                                'Indexed <comment>%s / %s</comment> %s entities into %s index',
+                                $numberOfRecords,
+                                count($entities),
+                                $entityClass,
+                                '<info>' . $indexName . '</info>'
+                            )
+                        );
                     }
 
                     $page++;
