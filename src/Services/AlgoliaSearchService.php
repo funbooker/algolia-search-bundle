@@ -115,16 +115,15 @@ final class AlgoliaSearchService implements SearchService
 
     /**
      * @param string $className
+     * @param string|null $indexName
      *
      * @return string
      */
     public function searchableAs($className, $indexName = null)
     {
         $indexMapping  = $this->classToIndexMapping[$className];
-        if (count($indexMapping) > 1 && $indexName) {
-            if (in_array($indexName, $indexMapping, true)) {
-                return $this->configuration['prefix'] . $indexName;
-            }
+        if ($indexName && count($indexMapping) > 1 && in_array($indexName, $indexMapping, true)) {
+            return $this->configuration['prefix'] . $indexName;
         }
 
         return $this->configuration['prefix'] . $indexMapping[0];
