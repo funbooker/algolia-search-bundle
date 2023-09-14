@@ -42,6 +42,8 @@ final class SearchableEntity
      */
     private $normalizer;
 
+    private array $extra;
+
     /**
      * @param string                               $indexName
      * @param object                               $entity
@@ -56,6 +58,7 @@ final class SearchableEntity
         $this->entityMetadata      = $entityMetadata;
         $this->normalizer          = $normalizer;
         $this->useSerializerGroups = isset($extra['useSerializerGroup']) && $extra['useSerializerGroup'];
+        $this->extra = $extra;
 
         $this->setId();
     }
@@ -81,6 +84,10 @@ final class SearchableEntity
 
         if ($this->useSerializerGroups) {
             $context['groups'] = [Searchable::NORMALIZATION_GROUP];
+        }
+
+        if (isset($this->extra['normalizerContext'])) {
+            $context['normalizerContext'] = $this->extra['normalizerContext'];
         }
 
         if ($this->normalizer instanceof NormalizerInterface) {
