@@ -25,7 +25,7 @@ abstract class IndexCommand extends Command
     }
 
     /**
-     * @return array<string, string>
+     * @return array
      */
     protected function getEntitiesFromArgs(InputInterface $input, OutputInterface $output)
     {
@@ -45,7 +45,7 @@ abstract class IndexCommand extends Command
 
         foreach ($indexNames as $name) {
             if (isset($config['indices'][$name])) {
-                $entities[$name] = $config['indices'][$name]['class'];
+                $entities[$config['indices'][$name]['class']][] = $name;
             } else {
                 $output->writeln('<comment>No index named <info>' . $name . '</info> was found. Check you configuration.</comment>');
             }

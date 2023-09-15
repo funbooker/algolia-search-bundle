@@ -29,9 +29,18 @@ interface SearchService
      *
      * @param string $className
      *
-     * @return string
+     * @return string|array
      */
     public function searchableAs($className);
+
+    /**
+     * Get the searchable index for the given `$indexName`.
+     *
+     * @param string $indexName
+     *
+     * @return string|array
+     */
+    public function buildSearchableIndex($indexName);
 
     /**
      * @param object|array<int, object>                           $searchables

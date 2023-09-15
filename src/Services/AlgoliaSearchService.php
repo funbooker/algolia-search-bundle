@@ -46,7 +46,7 @@ final class AlgoliaSearchService implements SearchService
     private $entitiesAggregators;
 
     /**
-     * @var array
+     * @var array<string, string>
      */
     private $classToIndexMapping;
 
@@ -79,7 +79,7 @@ final class AlgoliaSearchService implements SearchService
         $this->setSearchableEntities();
         $this->setAggregatorsAndEntitiesAggregators();
         $this->setClassToIndexMapping();
-        $this->setClassToSeializerGroupMapping();
+        $this->setClassToSerializerGroupMapping();
         $this->setIndexIfMapping();
     }
 
@@ -115,18 +115,22 @@ final class AlgoliaSearchService implements SearchService
 
     /**
      * @param string $className
-     * @param string|null $indexName
      *
      * @return string
      */
-    public function searchableAs($className, $indexName = null)
+    public function searchableAs($className)
     {
-        $indexMapping  = $this->classToIndexMapping[$className];
-        if ($indexName && count($indexMapping) > 1 && in_array($indexName, $indexMapping, true)) {
-            return $this->configuration['prefix'] . $indexName;
-        }
+        return $this->configuration['prefix'] . $this->classToIndexMapping[$className];
+    }
 
-        return $this->configuration['prefix'] . $indexMapping[0];
+    /**
+     * @param string $indexName
+     *
+     * @return string
+     */
+    public function buildSearchableIndex($indexName)
+    {
+        return $this->configuration['prefix'] . $indexName;
     }
 
     /**
@@ -144,21 +148,27 @@ final class AlgoliaSearchService implements SearchService
             return $this->isSearchable($entity);
         });
 
+        $currentIndex = null;
+        if (isset($requestOptions['currentIndex'])) {
+            $currentIndex = $requestOptions['currentIndex'];
+        }
+
         $searchablesToBeRemoved = [];
         foreach ($searchablesToBeIndexed as $key => $entity) {
-            if (!$this->shouldBeIndexed($entity)) {
+            if (!$this->shouldBeIndexed($entity, $currentIndex)) {
                 unset($searchablesToBeIndexed[$key]);
                 $searchablesToBeRemoved[] = $entity;
             }
         }
 
         if (count($searchablesToBeRemoved) > 0) {
-            $this->remove($objectManager, $searchablesToBeRemoved);
+            $this->remove($objectManager, $searchablesToBeRemoved, $requestOptions);
         }
 
         return $this->makeSearchServiceResponseFrom($objectManager, $searchablesToBeIndexed, function ($chunk) use ($requestOptions) {
+            unset($requestOptions['currentIndex']);
             return $this->engine->index($chunk, $requestOptions);
-        });
+        }, $currentIndex);
     }
 
     /**
@@ -176,9 +186,15 @@ final class AlgoliaSearchService implements SearchService
             return $this->isSearchable($entity);
         });
 
+        $currentIndex = null;
+        if (isset($requestOptions['currentIndex'])) {
+            $currentIndex = $requestOptions['currentIndex'];
+        }
+
         return $this->makeSearchServiceResponseFrom($objectManager, $searchables, function ($chunk) use ($requestOptions) {
+            unset($requestOptions['currentIndex']);
             return $this->engine->remove($chunk, $requestOptions);
-        });
+        }, $currentIndex);
     }
 
     /**
@@ -278,36 +294,25 @@ final class AlgoliaSearchService implements SearchService
 
     /**
      * @param object $entity
+     * @param string|null $indexName
      *
      * @return bool
      */
-    public function shouldBeIndexed($entity)
+    public function shouldBeIndexed($entity, $indexName = null)
     {
         $className    = ClassInfo::getClass($entity);
         $propertyPath = $this->indexIfMapping[$className];
 
-
         if ($propertyPath !== null) {
-            if (is_array($propertyPath)) {
-                foreach ($propertyPath as $property) {
-                    if ($this->propertyAccessor->isReadable($entity, $property)) {
-                        return $this->checkIfHasIndexableMethod($entity, $property);
-                    }
-                }
-            } else {
-                return $this->checkIfHasIndexableMethod($entity, $propertyPath);
+            $propertyName = $indexName ? $propertyPath[$indexName] : array_values($propertyPath)[0];
+
+            if ($this->propertyAccessor->isReadable($entity, $propertyName)) {
+                return (bool) $this->propertyAccessor->getValue($entity, $propertyName);
             }
+            return false;
         }
 
         return true;
-    }
-
-    private function checkIfHasIndexableMethod(object $entity, string $propertyPath): bool
-    {
-        if ($this->propertyAccessor->isReadable($entity, $propertyPath)) {
-            return (bool) $this->propertyAccessor->getValue($entity, $propertyPath);
-        }
-        return false;
     }
 
     /**
@@ -402,8 +407,8 @@ final class AlgoliaSearchService implements SearchService
     private function setIndexIfMapping()
     {
         $mapping = [];
-        foreach ($this->configuration['indices'] as $indexDetails) {
-            $mapping[$indexDetails['class']][] = $indexDetails['index_if'];
+        foreach ($this->configuration['indices'] as $indexName => $indexDetails) {
+            $mapping[$indexDetails['class']][$indexName] = $indexDetails['index_if'];
         }
 
         $this->indexIfMapping = $mapping;
@@ -414,30 +419,30 @@ final class AlgoliaSearchService implements SearchService
      *
      * @param array<int, object> $entities
      * @param callable           $operation
+     * @param string|null           $indexName
      *
      * @return \Algolia\AlgoliaSearch\Response\AbstractResponse
      */
-    private function makeSearchServiceResponseFrom(ObjectManager $objectManager, array $entities, $operation)
-    {
+    private function makeSearchServiceResponseFrom(
+        ObjectManager $objectManager,
+        array $entities,
+        $operation,
+        $indexName = null
+    ) {
         $batch = [];
+        foreach (array_chunk($entities, $this->configuration['batchSize']) as $chunk) {
+            $searchableEntitiesChunk = [];
+            foreach ($chunk as $entity) {
+                $entityClassName = ClassInfo::getClass($entity);
 
-        $searchableEntitiesChunk = [];
-        foreach ($entities as $entity) {
-
-            $entityClassName = ClassInfo::getClass($entity);
-
-            // Entity might be in multiple indices
-            $indexNames = [];
-            foreach ($this->configuration['indices'] as $indexName => $indexDetails) {
-                if ($indexDetails['class'] === $entityClassName) {
-                    $indexNames[] = $this->configuration['prefix'] . $indexName;
+                if (!$indexName) {
+                    $availableIndexes = $this->classToIndexMapping[$entityClassName];
+                    $indexName = array_values((array)$availableIndexes)[0];
                 }
-            }
+                $searchableAs = $this->buildSearchableIndex($indexName);
 
-            // We create one update per index
-            foreach ($indexNames as $indexName) {
                 $searchableEntitiesChunk[] = new SearchableEntity(
-                    $indexName,
+                    $searchableAs,
                     $entity,
                     $objectManager->getClassMetadata($entityClassName),
                     $this->normalizer,
@@ -446,18 +451,8 @@ final class AlgoliaSearchService implements SearchService
                         'normalizerContext' => $indexName
                     ]
                 );
-
             }
 
-            // Run chunked operation
-            if (count($searchableEntitiesChunk) >= $this->configuration['batchSize']) {
-                $batch[] = $operation($searchableEntitiesChunk);
-                $searchableEntitiesChunk = [];
-            }
-        }
-
-        // Run last non-full chunk operation
-        if (count($searchableEntitiesChunk) > 0) {
             $batch[] = $operation($searchableEntitiesChunk);
         }
 
