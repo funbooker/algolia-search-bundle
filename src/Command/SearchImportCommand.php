@@ -82,6 +82,7 @@ EOT
                 continue;
             }
 
+            
             foreach ($indexNames as $indexName) {
                 $sourceIndexName = $this->searchService->buildSearchableIndex($indexName);
                 if ($shouldDoAtomicReindex) {
