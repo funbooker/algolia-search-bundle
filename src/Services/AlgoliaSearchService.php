@@ -46,7 +46,7 @@ final class AlgoliaSearchService implements SearchService
     private $entitiesAggregators;
 
     /**
-     * @var array<string, string>
+     * @var array<string, array<string, string>>
      */
     private $classToIndexMapping;
 
@@ -56,7 +56,7 @@ final class AlgoliaSearchService implements SearchService
     private $classToSerializerGroupMapping;
 
     /**
-     * @var array<string, string|null>
+     * @var array<string, array<number, string>>
      */
     private $indexIfMapping;
 
