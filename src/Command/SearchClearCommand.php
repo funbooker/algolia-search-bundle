@@ -37,14 +37,18 @@ final class SearchClearCommand extends IndexCommand
     {
         $indexToClear = $this->getEntitiesFromArgs($input, $output);
 
-        foreach ($indexToClear as $indexName => $className) {
-            $success = $this->searchService->clear($className);
+        foreach ($indexToClear as $className => $indexNames) {
 
-            if ($success instanceof IndexingResponse) {
-                $output->writeln('Cleared <info>' . $indexName . '</info> index of <comment>' . $className . '</comment> ');
-            } else {
-                $output->writeln('<error>Index <info>' . $indexName . '</info>  couldn\'t be cleared</error>');
+            foreach ($indexNames as $indexName) {
+                $success = $this->searchService->clear($className, ['currentIndex' => $indexName]);
+
+                if ($success instanceof IndexingResponse) {
+                    $output->writeln('Cleared <info>' . $indexName . '</info> index of <comment>' . $className . '</comment> ');
+                } else {
+                    $output->writeln('<error>Index <info>' . $indexName . '</info>  couldn\'t be cleared</error>');
+                }
             }
+
         }
 
         $output->writeln('<info>Done!</info>');

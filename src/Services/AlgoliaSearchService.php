@@ -114,16 +114,6 @@ final class AlgoliaSearchService implements SearchService
     }
 
     /**
-     * @param string $className
-     *
-     * @return string
-     */
-    public function searchableAs($className)
-    {
-        return $this->configuration['prefix'] . $this->classToIndexMapping[$className];
-    }
-
-    /**
      * @param string $indexName
      *
      * @return string
@@ -133,6 +123,20 @@ final class AlgoliaSearchService implements SearchService
         return $this->configuration['prefix'] . $indexName;
     }
 
+    private function getCurrentIndex(string $className, ?string $indexName = null): ?string
+    {
+        $currentIndex = null;
+        if (!is_null($indexName)) {
+            $currentIndex = $indexName;
+        }
+
+        if (!$currentIndex) {
+            $availableIndexes = $this->classToIndexMapping[$className];
+            $currentIndex = array_values($availableIndexes)[0];
+        }
+
+        return $currentIndex;
+    }
     /**
      * @param object|array<int, object>                           $searchables
      * @param array<string, bool|int|string|array>|RequestOptions $requestOptions
@@ -207,7 +211,9 @@ final class AlgoliaSearchService implements SearchService
     {
         $this->assertIsSearchable($className);
 
-        return $this->engine->clear($this->searchableAs($className), $requestOptions);
+        $currentIndex = $this->getCurrentIndex($className, $requestOptions['currentIndex']);
+
+        return $this->engine->clear($currentIndex, $requestOptions);
     }
 
     /**
@@ -220,7 +226,9 @@ final class AlgoliaSearchService implements SearchService
     {
         $this->assertIsSearchable($className);
 
-        return $this->engine->delete($this->searchableAs($className), $requestOptions);
+        $currentIndex = $this->getCurrentIndex($className, $requestOptions['currentIndex']);
+
+        return $this->engine->delete($currentIndex, $requestOptions);
     }
 
     /**
@@ -236,7 +244,9 @@ final class AlgoliaSearchService implements SearchService
     {
         $this->assertIsSearchable($className);
 
-        $ids = $this->engine->searchIds($query, $this->searchableAs($className), $requestOptions);
+        $currentIndex = $this->getCurrentIndex($className, $requestOptions['currentIndex']);
+
+        $ids = $this->engine->searchIds($query, $currentIndex, $requestOptions);
 
         $results = [];
 
@@ -273,7 +283,9 @@ final class AlgoliaSearchService implements SearchService
     {
         $this->assertIsSearchable($className);
 
-        return $this->engine->search($query, $this->searchableAs($className), $requestOptions);
+        $currentIndex = $this->getCurrentIndex($className, $requestOptions['currentIndex']);
+
+        return $this->engine->search($query, $currentIndex, $requestOptions);
     }
 
     /**
@@ -289,7 +301,9 @@ final class AlgoliaSearchService implements SearchService
     {
         $this->assertIsSearchable($className);
 
-        return $this->engine->count($query, $this->searchableAs($className), $requestOptions);
+        $currentIndex = $this->getCurrentIndex($className, $requestOptions['currentIndex']);
+
+        return $this->engine->count($query, $currentIndex, $requestOptions);
     }
 
     /**

@@ -25,15 +25,6 @@ interface SearchService
     public function getConfiguration();
 
     /**
-     * Get the index name for the given `$className`.
-     *
-     * @param string $className
-     *
-     * @return string|array
-     */
-    public function searchableAs($className);
-
-    /**
      * Get the searchable index for the given `$indexName`.
      *
      * @param string $indexName
