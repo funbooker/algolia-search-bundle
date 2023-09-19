@@ -42,6 +42,8 @@ interface SearchService
      */
     public function buildSearchableIndex($indexName);
 
+    public function getClassToIndexMapping(): array;
+
     /**
      * @param object|array<int, object>                           $searchables
      * @param array<string, int|string|bool|array>|RequestOptions $requestOptions

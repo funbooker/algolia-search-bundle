@@ -325,6 +325,11 @@ final class AlgoliaSearchService implements SearchService
         return $this->classToSerializerGroupMapping[$className];
     }
 
+    public function getClassToIndexMapping(): array
+    {
+        return $this->classToIndexMapping;
+    }
+
     /**
      * @return void
      */
