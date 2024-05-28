@@ -40,6 +40,9 @@ final class SearchClearCommand extends IndexCommand
         foreach ($indexToClear as $className => $indexNames) {
 
             foreach ($indexNames as $indexName) {
+                $configuration = $this->searchService->getConfiguration();
+                $indexName = $configuration['prefix'] . $indexName;
+                
                 $success = $this->searchService->clear($className, ['currentIndex' => $indexName]);
 
                 if ($success instanceof IndexingResponse) {
